@@ -1,12 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams?.get('next') ?? '/dashboard'
   const supabase = useMemo(() => createClient(), [])
 
   const [email, setEmail] = useState('')
@@ -31,7 +33,7 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
+    router.push(next)
     router.refresh()
   }
 
@@ -88,7 +90,10 @@ export default function LoginPage() {
 
         <p className="mt-6 text-sm text-center text-gray-600">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-emerald-700 font-medium hover:underline">
+          <Link
+            href={`/signup${next !== '/dashboard' ? `?next=${encodeURIComponent(next)}` : ''}`}
+            className="text-emerald-700 font-medium hover:underline"
+          >
             Sign up
           </Link>
         </p>
