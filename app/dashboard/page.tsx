@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import StatCard from '@/components/StatCard'
 import InviteCard, { InviteSummary } from '@/components/InviteCard'
@@ -31,11 +31,9 @@ export default function DashboardPage() {
         return
       }
 
-      // Invites
       const { data: inv } = await supabase.rpc('get_my_pending_invites')
       setInvites((inv as InviteSummary[]) ?? [])
 
-      // Stats
       const { data: memberships } = await supabase
         .from('members')
         .select('stokvel_id')
@@ -122,15 +120,34 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Active Members" value={String(stats.members)} />
         <StatCard label="Group Balance" value={`R ${stats.balance.toFixed(2)}`} />
-        <StatCard
-          label="Pending Contributions"
-          value={String(stats.pending)}
-        />
+        <StatCard label="Pending Contributions" value={String(stats.pending)} />
         <StatCard
           label="Paid This Month"
           value={`R ${stats.paidThisMonth.toFixed(2)}`}
         />
       </div>
+
+      {stats.pending > 0 && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={18} className="text-amber-600" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">
+                {stats.pending} contribution{stats.pending === 1 ? '' : 's'} outstanding
+              </p>
+              <p className="text-xs text-amber-700">
+                Open the contributions page to mark payments or nudge members.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/contributions"
+            className="inline-flex items-center gap-1 text-sm font-medium text-amber-800 hover:underline"
+          >
+            View <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {invites.length > 0 && (
         <section>
