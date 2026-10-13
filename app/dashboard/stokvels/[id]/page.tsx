@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, UserPlus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, UserPlus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import AddMemberForm from '@/components/AddMemberForm'
+import RotationPanel from '@/components/RotationPanel'
 
 type Stokvel = {
   id: string
@@ -41,6 +42,8 @@ type InviteRow = {
   expires_at: string
 }
 
+type Tab = 'overview' | 'members' | 'invites' | 'rotation'
+
 export default function StokvelDetailPage() {
   const supabase = useMemo(() => createClient(), [])
   const params = useParams<{ id: string }>()
@@ -52,12 +55,14 @@ export default function StokvelDetailPage() {
   const [invites, setInvites] = useState<InviteRow[]>([])
   const [loading, setLoading] = useState(true)
   const [myRole, setMyRole] = useState<string | null>(null)
-  const [tab, setTab] = useState<'overview' | 'members' | 'invites'>('overview')
+  const [tab, setTab] = useState<Tab>('overview')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) {
       router.push('/login')
       return
@@ -111,7 +116,9 @@ export default function StokvelDetailPage() {
   }
 
   async function removeMember(memberId: string, userId: string) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return
     if (userId === user.id) {
       setError('You cannot remove yourself. Transfer admin first or leave the group.')
@@ -128,13 +135,21 @@ export default function StokvelDetailPage() {
     return (
       <div className="bg-white border rounded-xl p-6">
         <p className="text-red-600 text-sm">{error}</p>
-        <Link href="/dashboard/stokvels" className="text-emerald-700 text-sm underline mt-2 inline-block">
+        <Link
+          href="/dashboard/stokvels"
+          className="text-emerald-700 text-sm underline mt-2 inline-block"
+        >
           Back to stokvels
         </Link>
       </div>
     )
   }
   if (!stokvel) return null
+
+  const isRotational = stokvel.type === 'rotational'
+  const tabs: Tab[] = isRotational
+    ? ['overview', 'members', 'invites', 'rotation']
+    : ['overview', 'members', 'invites']
 
   return (
     <div>
@@ -149,14 +164,17 @@ export default function StokvelDetailPage() {
         <div>
           <h1 className="text-3xl font-bold">{stokvel.name}</h1>
           <p className="text-sm text-gray-500 capitalize mt-1">
-            {stokvel.type} · R {Number(stokvel.contribution_amount).toFixed(2)} {stokvel.frequency}
+            {stokvel.type} · R {Number(stokvel.contribution_amount).toFixed(2)}{' '}
+            {stokvel.frequency}
           </p>
         </div>
-        {canAdmin && tab === 'invites' && <AddMemberForm stokvelId={stokvelId} onInvited={load} />}
+        {canAdmin && tab === 'invites' && (
+          <AddMemberForm stokvelId={stokvelId} onInvited={load} />
+        )}
       </div>
 
       <div className="border-b mb-6 flex gap-6 text-sm">
-        {(['overview', 'members', 'invites'] as const).map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -188,7 +206,10 @@ export default function StokvelDetailPage() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Contribution</dt>
-                <dd>R {Number(stokvel.contribution_amount).toFixed(2)} · {stokvel.frequency}</dd>
+                <dd>
+                  R {Number(stokvel.contribution_amount).toFixed(2)} ·{' '}
+                  {stokvel.frequency}
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-gray-500">Bank</dt>
@@ -216,7 +237,9 @@ export default function StokvelDetailPage() {
             ) : (
               <p className="text-sm text-gray-400 mb-4">No description set.</p>
             )}
-            <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-1">Penalties</h3>
+            <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+              Penalties
+            </h3>
             <p className="text-sm text-gray-700 whitespace-pre-wrap">
               {stokvel.penalty_rules ?? 'None specified.'}
             </p>
@@ -234,6 +257,7 @@ export default function StokvelDetailPage() {
                 <th className="text-left p-3 font-medium">Role</th>
                 <th className="text-left p-3 font-medium">Status</th>
                 <th className="text-left p-3 font-medium">Joined</th>
+                <th className="p-3"></th>
                 {canAdmin && <th className="p-3"></th>}
               </tr>
             </thead>
@@ -257,6 +281,14 @@ export default function StokvelDetailPage() {
                   <td className="p-3 text-gray-500">
                     {new Date(m.joined_at).toLocaleDateString()}
                   </td>
+                  <td className="p-3 text-right">
+                    <Link
+                      href={`/dashboard/members/${m.id}`}
+                      className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
+                    >
+                      Statement <ExternalLink size={12} />
+                    </Link>
+                  </td>
                   {canAdmin && (
                     <td className="p-3 text-right">
                       <button
@@ -272,7 +304,10 @@ export default function StokvelDetailPage() {
               ))}
               {members.length === 0 && (
                 <tr>
-                  <td colSpan={canAdmin ? 6 : 5} className="p-6 text-center text-gray-500">
+                  <td
+                    colSpan={canAdmin ? 7 : 6}
+                    className="p-6 text-center text-gray-500"
+                  >
                     No members yet.
                   </td>
                 </tr>
@@ -332,6 +367,14 @@ export default function StokvelDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {tab === 'rotation' && isRotational && (
+        <RotationPanel
+          stokvelId={stokvelId}
+          stokvelType={stokvel.type}
+          myRole={myRole as any}
+        />
       )}
     </div>
   )
